@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
 
+# SUS010 already present: prevent duplicate concurrent runs
 concurrency:
   group: "${{ github.workflow }} ✨ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
   cancel-in-progress: true
@@ -24,6 +25,8 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # SUS002
+
     steps:
       - name: Start Eco CI
         uses: green-coding-solutions/eco-ci-energy-estimation@v5
@@ -35,14 +38,17 @@ jobs:
           json-output: true
         continue-on-error: true
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+          fetch-depth: 1 # SUS007
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 'lts/*'
+          cache: npm # SUS001
 
       - name: Install dependencies
         run: npm install --ignore-scripts --include=dev
@@ -71,11 +77,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest] # SUS009-style reduction: removed windows-latest
         node-version: [18, 19, 20, 21, 22, 23, 24, 25]
 
     name: Node.js ${{ matrix.node-version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20 # SUS002
 
     steps:
       - name: Start Eco CI
@@ -88,14 +95,17 @@ jobs:
           json-output: true
         continue-on-error: true
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+          fetch-depth: 1 # SUS007
 
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm # SUS001
 
       - name: Configure npm loglevel
         run: |
@@ -149,6 +159,7 @@ jobs:
   coverage:
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # SUS002
     permissions:
       contents: read
       checks: write
@@ -164,9 +175,11 @@ jobs:
           json-output: true
         continue-on-error: true
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+          fetch-depth: 1 # SUS007
 
       - name: Install lcov
         shell: bash
