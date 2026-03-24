@@ -16,8 +16,6 @@ on:
 permissions:
   contents: read
 
-# Cancel in progress workflows
-# in the scenario where we already had a run going for that PR/branch/tag but then triggered a new run
 concurrency:
   group: "${{ github.workflow }} ✨ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
   cancel-in-progress: true
@@ -27,9 +25,20 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
+      - name: Start Eco CI
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: start-measurement
+          send-data: false
+          co2-calculation-method: constant
+          co2-grid-intensity-constant: 475
+          json-output: true
+        continue-on-error: true
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
@@ -38,8 +47,25 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --include=dev
 
+      - name: Eco CI checkpoint after install
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: get-measurement
+          label: install
+          json-output: true
+        continue-on-error: true
+
       - name: Run lint
         run: npm run lint
+
+      - name: Show Eco CI results
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: display-results
+          display-table: true
+          display-badge: false
+          json-output: true
+        continue-on-error: true
 
   test:
     strategy:
@@ -47,12 +73,21 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         node-version: [18, 19, 20, 21, 22, 23, 24, 25]
-        # Node.js release schedule: https://nodejs.org/en/about/releases/
 
-    name: Node.js ${{ matrix.node-version }} - ${{matrix.os}}
-
+    name: Node.js ${{ matrix.node-version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+
     steps:
+      - name: Start Eco CI
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: start-measurement
+          send-data: false
+          co2-calculation-method: constant
+          co2-grid-intensity-constant: 475
+          json-output: true
+        continue-on-error: true
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -70,6 +105,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Eco CI checkpoint after install
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: get-measurement
+          label: install
+          json-output: true
+        continue-on-error: true
+
       - name: Output Node and NPM versions
         run: |
           echo "Node.js version: $(node -v)"
@@ -79,6 +122,14 @@ jobs:
         shell: bash
         run: npm run test-ci
 
+      - name: Eco CI checkpoint after tests
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: get-measurement
+          label: tests
+          json-output: true
+        continue-on-error: true
+
       - name: Upload code coverage
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -86,13 +137,33 @@ jobs:
           path: ./coverage/lcov.info
           retention-days: 1
 
+      - name: Show Eco CI results
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: display-results
+          display-table: true
+          display-badge: false
+          json-output: true
+        continue-on-error: true
+
   coverage:
     needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
+
     steps:
+      - name: Start Eco CI
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: start-measurement
+          send-data: false
+          co2-calculation-method: constant
+          co2-grid-intensity-constant: 475
+          json-output: true
+        continue-on-error: true
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -100,6 +171,14 @@ jobs:
       - name: Install lcov
         shell: bash
         run: sudo apt-get -y install lcov
+
+      - name: Eco CI checkpoint after lcov install
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: get-measurement
+          label: lcov-install
+          json-output: true
+        continue-on-error: true
 
       - name: Collect coverage reports
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
@@ -111,7 +190,24 @@ jobs:
         shell: bash
         run: find ./coverage -name lcov.info -exec printf '-a %q\n' {} \; | xargs lcov -o ./lcov.info
 
+      - name: Eco CI checkpoint after coverage merge
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: get-measurement
+          label: merge-coverage
+          json-output: true
+        continue-on-error: true
+
       - name: Upload coverage report
         uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
         with:
           file: ./lcov.info
+
+      - name: Show Eco CI results
+        uses: green-coding-solutions/eco-ci-energy-estimation@v5
+        with:
+          task: display-results
+          display-table: true
+          display-badge: false
+          json-output: true
+        continue-on-error: true
